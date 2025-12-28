@@ -1,0 +1,518 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Percepta - AI-powered vision-to-voice assistant for visually impaired users">
+    <title>Percepta - Vision to Voice Assistant</title>
+    <style>
+        /* ===== RESET & BASE STYLES ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            font-size: 18px;
+            line-height: 1.6;
+            color: #000000;
+            background-color: #FFFFFF;
+            padding: 0;
+            margin: 0;
+        }
+
+        /* ===== HEADER ===== */
+        header {
+            background-color: #1a1a1a;
+            color: #FFFFFF;
+            padding: 24px 20px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+
+        .language-selector {
+            margin-top: 16px;
+        }
+
+        .language-selector label {
+            display: block;
+            font-size: 18px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .language-selector select {
+            width: 100%;
+            max-width: 300px;
+            padding: 16px;
+            font-size: 20px;
+            border: 3px solid #FFFFFF;
+            border-radius: 8px;
+            background-color: #2a2a2a;
+            color: #FFFFFF;
+            cursor: pointer;
+        }
+
+        /* ===== MAIN CONTAINER ===== */
+        main {
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        section {
+            margin-bottom: 32px;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #1a1a1a;
+        }
+
+        /* ===== CONTROL SYSTEM ===== */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        button {
+            width: 100%;
+            padding: 20px;
+            font-size: 22px;
+            font-weight: 700;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.1s;
+            min-height: 70px;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background-color: #007AFF;
+            color: #FFFFFF;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-secondary {
+            background-color: #FF3B30;
+            color: #FFFFFF;
+        }
+
+        .btn-secondary:hover {
+            background-color: #cc2e24;
+        }
+
+        .btn-secondary:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .toggle-voice {
+            background-color: #34C759;
+            color: #FFFFFF;
+        }
+
+        .toggle-voice.off {
+            background-color: #8E8E93;
+        }
+
+        .toggle-voice:hover {
+            opacity: 0.9;
+        }
+
+        /* ===== CAMERA VIEW ===== */
+        .camera-container {
+            width: 100%;
+            background-color: #000000;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            aspect-ratio: 4/3;
+        }
+
+        #cameraFeed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+            font-size: 20px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* ===== DETECTED INFO PANEL ===== */
+        .info-panel {
+            background-color: #F2F2F7;
+            border: 3px solid #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 120px;
+        }
+
+        .info-item {
+            font-size: 20px;
+            padding: 12px;
+            margin-bottom: 12px;
+            background-color: #FFFFFF;
+            border-left: 5px solid #007AFF;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .info-item.priority {
+            border-left-color: #FF3B30;
+            background-color: #FFE5E5;
+        }
+
+        .no-detection {
+            color: #8E8E93;
+            font-size: 18px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* ===== SPOKEN OUTPUT ===== */
+        .spoken-output {
+            background-color: #1a1a1a;
+            color: #FFFFFF;
+            border-radius: 12px;
+            padding: 24px;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .spoken-text {
+            font-size: 22px;
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .spoken-output.empty .spoken-text {
+            color: #8E8E93;
+            font-weight: 400;
+        }
+
+        /* ===== ACCESSIBILITY ===== */
+        *:focus {
+            outline: 3px solid #007AFF;
+            outline-offset: 2px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
+            }
+        }
+
+        /* ===== STATUS INDICATOR ===== */
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #8E8E93;
+            margin-left: 8px;
+        }
+
+        .status-indicator.active {
+            background-color: #34C759;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ===== HEADER ===== -->
+    <header role="banner">
+        <h1>Percepta</h1>
+        <p class="subtitle">Vision to Voice for Safer Navigation</p>
+        
+        <div class="language-selector">
+            <label for="languageSelect">Language / भाषा</label>
+            <select id="languageSelect" aria-label="Select language">
+                <option value="en">English</option>
+                <option value="hi">हिन्दी (Hindi)</option>
+                <option value="es">Español (Spanish)</option>
+                <option value="fr">Français (French)</option>
+                <option value="de">Deutsch (German)</option>
+            </select>
+        </div>
+    </header>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main role="main">
+        
+        <!-- CONTROL SYSTEM -->
+        <section aria-labelledby="controls-heading">
+            <h2 id="controls-heading">
+                Controls
+                <span class="status-indicator" id="statusIndicator" aria-label="Camera status"></span>
+            </h2>
+            <div class="controls">
+                <button 
+                    id="startBtn" 
+                    class="btn-primary" 
+                    aria-label="Start camera and detection">
+                    Start Camera
+                </button>
+                <button 
+                    id="stopBtn" 
+                    class="btn-secondary" 
+                    disabled 
+                    aria-label="Stop camera and detection">
+                    Stop Camera
+                </button>
+                <button 
+                    id="voiceToggle" 
+                    class="toggle-voice" 
+                    aria-label="Toggle voice output"
+                    aria-pressed="true">
+                    Voice: ON
+                </button>
+            </div>
+        </section>
+
+        <!-- LIVE CAMERA VIEW -->
+        <section aria-labelledby="camera-heading">
+            <h2 id="camera-heading">Live View</h2>
+            <div class="camera-container" role="region" aria-label="Camera feed">
+                <video id="cameraFeed" autoplay playsinline aria-hidden="true" style="display:none;"></video>
+                <div class="camera-placeholder" id="cameraPlaceholder">
+                    Camera is off. Press "Start Camera" to begin.
+                </div>
+            </div>
+        </section>
+
+        <!-- DETECTED INFORMATION -->
+        <section aria-labelledby="detected-heading">
+            <h2 id="detected-heading">Detected Information</h2>
+            <div class="info-panel" id="detectedInfo" role="region" aria-live="polite" aria-atomic="true">
+                <p class="no-detection">No detections yet. Start camera to begin.</p>
+            </div>
+        </section>
+
+        <!-- SPOKEN OUTPUT -->
+        <section aria-labelledby="spoken-heading">
+            <h2 id="spoken-heading">Last Spoken</h2>
+            <div class="spoken-output empty" id="spokenOutput" role="region" aria-live="assertive" aria-atomic="true">
+                <p class="spoken-text" id="spokenText">Waiting for voice output...</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ===== JAVASCRIPT ===== -->
+    <script>
+        // ===== GLOBAL STATE =====
+        let cameraActive = false;
+        let voiceEnabled = true;
+        let detectionInterval = null;
+        let stream = null;
+
+        // ===== DOM ELEMENTS =====
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const voiceToggle = document.getElementById('voiceToggle');
+        const cameraFeed = document.getElementById('cameraFeed');
+        const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+        const detectedInfo = document.getElementById('detectedInfo');
+        const spokenText = document.getElementById('spokenText');
+        const spokenOutput = document.getElementById('spokenOutput');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const languageSelect = document.getElementById('languageSelect');
+
+        // ===== MOCK DETECTION DATA =====
+        const mockDetections = [
+            { text: 'Person ahead at 3 meters', priority: false },
+            { text: 'Door on the right', priority: false },
+            { text: 'Stairs detected - Caution!', priority: true },
+            { text: 'Text detected: EXIT →', priority: false },
+            { text: 'Obstacle on left side', priority: true },
+            { text: 'Chair in front', priority: false },
+            { text: 'Wall approaching', priority: false },
+            { text: 'Open space ahead', priority: false }
+        ];
+
+        // ===== START CAMERA =====
+        startBtn.addEventListener('click', async () => {
+            try {
+                // Request camera access
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' } 
+                });
+                
+                cameraFeed.srcObject = stream;
+                cameraFeed.style.display = 'block';
+                cameraPlaceholder.style.display = 'none';
+                
+                cameraActive = true;
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                statusIndicator.classList.add('active');
+                
+                speak('Camera started. Detection active.');
+                
+                // Start mock detection simulation
+                startDetection();
+                
+            } catch (error) {
+                console.error('Camera access error:', error);
+                speak('Unable to access camera. Please grant camera permissions.');
+                alert('Camera access denied. Please allow camera access in your browser settings.');
+            }
+        });
+
+        // ===== STOP CAMERA =====
+        stopBtn.addEventListener('click', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            
+            cameraFeed.style.display = 'none';
+            cameraPlaceholder.style.display = 'flex';
+            cameraPlaceholder.textContent = 'Camera stopped.';
+            
+            cameraActive = false;
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            statusIndicator.classList.remove('active');
+            
+            stopDetection();
+            speak('Camera stopped.');
+        });
+
+        // ===== VOICE TOGGLE =====
+        voiceToggle.addEventListener('click', () => {
+            voiceEnabled = !voiceEnabled;
+            voiceToggle.textContent = voiceEnabled ? 'Voice: ON' : 'Voice: OFF';
+            voiceToggle.classList.toggle('off', !voiceEnabled);
+            voiceToggle.setAttribute('aria-pressed', voiceEnabled);
+            
+            const message = voiceEnabled ? 'Voice enabled' : 'Voice disabled';
+            speak(message);
+        });
+
+        // ===== LANGUAGE CHANGE =====
+        languageSelect.addEventListener('change', (e) => {
+            const lang = e.target.value;
+            speak(`Language changed to ${e.target.options[e.target.selectedIndex].text}`);
+        });
+
+        // ===== START DETECTION SIMULATION =====
+        function startDetection() {
+            let detectionCount = 0;
+            
+            detectionInterval = setInterval(() => {
+                if (!cameraActive) return;
+                
+                // Get random detections
+                const numDetections = Math.floor(Math.random() * 3) + 1;
+                const detections = [];
+                
+                for (let i = 0; i < numDetections; i++) {
+                    const randomIndex = Math.floor(Math.random() * mockDetections.length);
+                    detections.push(mockDetections[randomIndex]);
+                }
+                
+                updateDetectedInfo(detections);
+                
+                // Speak priority items
+                const priorityItem = detections.find(d => d.priority);
+                if (priorityItem) {
+                    speak(priorityItem.text);
+                } else if (detections.length > 0) {
+                    speak(detections[0].text);
+                }
+                
+                detectionCount++;
+            }, 3000); // Update every 3 seconds
+        }
+
+        // ===== STOP DETECTION =====
+        function stopDetection() {
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+                detectionInterval = null;
+            }
+            detectedInfo.innerHTML = '<p class="no-detection">Detection stopped.</p>';
+        }
+
+        // ===== UPDATE DETECTED INFO PANEL =====
+        function updateDetectedInfo(detections) {
+            if (detections.length === 0) {
+                detectedInfo.innerHTML = '<p class="no-detection">No objects detected</p>';
+                return;
+            }
+            
+            detectedInfo.innerHTML = detections.map(detection => 
+                `<div class="info-item ${detection.priority ? 'priority' : ''}" role="alert">
+                    ${detection.text}
+                </div>`
+            ).join('');
+        }
+
+        // ===== SPEAK FUNCTION =====
+        function speak(text) {
+            // Update spoken output display
+            spokenText.textContent = text;
+            spokenOutput.classList.remove('empty');
+            
+            // Use Web Speech API if voice is enabled
+            if (voiceEnabled && 'speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 0.9;
+                utterance.pitch = 1;
+                utterance.volume = 1;
+                
+                // Try to use selected language
+                const lang = languageSelect.value;
+                utterance.lang = lang;
+                
+                speechSynthesis.speak(utterance);
+            }
+        }
+
+        // ===== INITIAL ANNOUNCEMENT =====
+        window.addEventListener('load', () => {
+            speak('Percepta ready. Press Start Camera to begin.');
+        });
+    </script>
+</body>
+</html>
