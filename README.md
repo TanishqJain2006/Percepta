@@ -2,7 +2,7 @@
 ### AI Vision-to-Voice Assistant for the Visually Impaired
 
 ## 🧠 Overview
-EchoVision is an AI-powered assistive system designed to help visually impaired individuals navigate their surroundings safely and independently. The system converts real-time visual input into **context-aware voice guidance**, enabling users to understand obstacles, people, and important signs in their environment.
+Percepta is an AI-powered assistive system designed to help visually impaired individuals navigate their surroundings safely and independently. The system converts real-time visual input into **context-aware voice guidance**, enabling users to understand obstacles, people, and important signs in their environment.
 
 Unlike traditional solutions that narrate everything, EchoVision intelligently **prioritizes critical information**, reducing cognitive overload and improving usability.
 
