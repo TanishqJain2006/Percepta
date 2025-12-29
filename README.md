@@ -19,7 +19,7 @@ Existing assistive tools are often expensive, limited in scope, or overwhelm use
 ---
 
 ## 💡 Proposed Solution
-EchoVision captures live visual input through a camera, processes it using AI-based computer vision and text recognition, and delivers **prioritized audio feedback** to the user for safer navigation.
+Percepta captures live visual input through a camera, processes it using AI-based computer vision and text recognition, and delivers **prioritized audio feedback** to the user for safer navigation.
 
 ---
 
