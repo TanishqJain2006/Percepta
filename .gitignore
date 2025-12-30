@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+.venv/
+
+# YOLO / ML
+runs/
+*.pt
+
+# macOS
+.DS_Store
