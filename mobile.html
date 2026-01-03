@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Percepta Mobile - Vision Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        .container {
+            max-width: 100%;
+            padding: 15px;
+        }
+
+        header {
+            text-align: center;
+            padding: 20px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            font-size: 1.8em;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .camera-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #canvas {
+            display: none;
+        }
+
+        .camera-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10;
+        }
+
+        .camera-overlay.hidden {
+            display: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 120px;
+            padding: 15px 20px;
+            font-size: 1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-primary:active {
+            background: #059669;
+            transform: scale(0.95);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:active {
+            background: #dc2626;
+            transform: scale(0.95);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-secondary:active {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .status-bar {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4ade80;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .language-selector {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 1em;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .language-selector option {
+            background: #764ba2;
+        }
+
+        .speech-panel {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            min-height: 100px;
+        }
+
+        .speech-text {
+            font-size: 1.2em;
+            line-height: 1.5;
+            text-align: center;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .panel h2 {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .item {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item-name {
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .item-badge {
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            font-size: 0.85em;
+        }
+
+        .empty-state {
+            opacity: 0.5;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .capture-interval {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+
+        .capture-interval input {
+            flex: 1;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.5em;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>👁️ Percepta Mobile</h1>
+            <p class="subtitle">AI Vision Assistant</p>
+        </header>
+
+        <div class="camera-container">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas"></canvas>
+            <div class="camera-overlay" id="cameraOverlay">
+                <button class="btn-primary" onclick="startCamera()">📷 Start Camera</button>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-primary" id="startBtn" onclick="startAssistance()">▶️ Start</button>
+            <button class="btn-danger hidden" id="stopBtn" onclick="stopAssistance()">⏹️ Stop</button>
+            <button class="btn-secondary" onclick="captureNow()">📸 Capture Now</button>
+        </div>
+
+        <select class="language-selector" id="languageSelect" onchange="changeLanguage()">
+            <option value="en">🇺🇸 English</option>
+            <option value="hi">🇮🇳 हिंदी (Hindi)</option>
+        </select>
+
+        <div class="capture-interval">
+            <label>Capture Interval:</label>
+            <input type="range" id="intervalSlider" min="1" max="10" value="3" oninput="updateInterval()">
+            <span id="intervalValue">3s</span>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-dot"></div>
+            <span id="statusText">Ready to start</span>
+        </div>
+
+        <div class="speech-panel">
+            <div class="speech-text" id="speechText">
+                <span class="empty-state">Waiting for detection...</span>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>👀 Detected Objects</h2>
+            <div id="objectsList">
+                <div class="empty-state">No objects detected</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>📝 Detected Text</h2>
+            <div id="textList">
+                <div class="empty-state">No text detected</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const BACKEND_URL = window.location.origin;
+        let video, canvas, ctx;
+        let isRunning = false;
+        let captureInterval = 3000; // 3 seconds
+        let intervalId = null;
+        let currentLanguage = 'en';
+        let stream = null;
+
+        // Initialize
+        window.addEventListener('load', () => {
+            video = document.getElementById('video');
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            
+            console.log('Percepta Mobile initialized');
+        });
+
+        async function startCamera() {
+            try {
+                // Request camera with rear camera preference
+                const constraints = {
+                    video: {
+                        facingMode: { ideal: 'environment' }, // Rear camera
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                
+                document.getElementById('cameraOverlay').classList.add('hidden');
+                document.getElementById('statusText').textContent = 'Camera ready';
+                
+                console.log('Camera started');
+            } catch (error) {
+                console.error('Camera error:', error);
+                alert('Could not access camera. Please allow camera permissions.');
+            }
+        }
+
+        async function startAssistance() {
+            if (!stream) {
+                alert('Please start camera first');
+                return;
+            }
+
+            isRunning = true;
+            document.getElementById('startBtn').classList.add('hidden');
+            document.getElementById('stopBtn').classList.remove('hidden');
+            document.getElementById('statusText').textContent = 'Assistance active';
+
+            // Start periodic captures
+            intervalId = setInterval(captureAndAnalyze, captureInterval);
+            
+            // First capture immediately
+            captureAndAnalyze();
+        }
+
+        function stopAssistance() {
+            isRunning = false;
+            document.getElementById('startBtn').classList.remove('hidden');
+            document.getElementById('stopBtn').classList.add('hidden');
+            document.getElementById('statusText').textContent = 'Assistance paused';
+
+            if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = null;
+            }
+        }
+
+        async function captureNow() {
+            if (!stream) {
+                alert('Please start camera first');
+                return;
+            }
+            
+            await captureAndAnalyze();
+        }
+
+        async function captureAndAnalyze() {
+            try {
+                // Capture frame from video
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+                
+                // Convert to blob
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+                
+                // Create form data
+                const formData = new FormData();
+                formData.append('image', blob, 'frame.jpg');
+                formData.append('language', currentLanguage);
+                
+                // Send to backend
+                const response = await fetch(`${BACKEND_URL}/analyze`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    updateUI(data);
+                    
+                    // Speak result if available
+                    if (data.speech && 'speechSynthesis' in window) {
+                        speakText(data.speech, currentLanguage);
+                    }
+                } else {
+                    console.error('Analysis failed:', response.status);
+                }
+                
+            } catch (error) {
+                console.error('Capture error:', error);
+            }
+        }
+
+        function updateUI(data) {
+            // Update speech
+            const speechText = document.getElementById('speechText');
+            if (data.speech) {
+                speechText.innerHTML = data.speech;
+            }
+
+            // Update objects
+            const objectsList = document.getElementById('objectsList');
+            if (data.objects && data.objects.length > 0) {
+                objectsList.innerHTML = data.objects.map((obj, index) => {
+                    const highlight = index === 0 ? 'border: 2px solid #fbbf24;' : '';
+                    const urgency = obj.urgency ? `⚡ ${obj.urgency.toFixed(1)}` : '';
+                    
+                    return `
+                        <div class="item" style="${highlight}">
+                            <span class="item-name">${obj.class} ${urgency}</span>
+                            <span class="item-badge">${(obj.confidence * 100).toFixed(0)}%</span>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                objectsList.innerHTML = '<div class="empty-state">No objects detected</div>';
+            }
+
+            // Update text
+            const textList = document.getElementById('textList');
+            if (data.text && data.text.length > 0) {
+                textList.innerHTML = data.text.map(text => 
+                    `<div class="item"><span>${text}</span></div>`
+                ).join('');
+            } else {
+                textList.innerHTML = '<div class="empty-state">No text detected</div>';
+            }
+        }
+
+        function speakText(text, language) {
+            // Use Web Speech API for TTS
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = language === 'hi' ? 'hi-IN' : 'en-US';
+            utterance.rate = 0.9;
+            
+            // Stop any ongoing speech
+            speechSynthesis.cancel();
+            
+            // Speak
+            speechSynthesis.speak(utterance);
+        }
+
+        function changeLanguage() {
+            currentLanguage = document.getElementById('languageSelect').value;
+            
+            // Send to backend
+            fetch(`${BACKEND_URL}/set_language`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ language: currentLanguage })
+            });
+            
+            console.log('Language changed to:', currentLanguage);
+        }
+
+        function updateInterval() {
+            const slider = document.getElementById('intervalSlider');
+            const value = slider.value;
+            captureInterval = value * 1000;
+            document.getElementById('intervalValue').textContent = value + 's';
+            
+            // Restart interval if running
+            if (isRunning && intervalId) {
+                clearInterval(intervalId);
+                intervalId = setInterval(captureAndAnalyze, captureInterval);
+            }
+        }
+
+        // Handle page visibility (pause when app in background)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && isRunning) {
+                stopAssistance();
+            }
+        });
+    </script>
+</body>
+</html>
