@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Percepta - Vision Assistant Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4ade80;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .panel h2 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon {
+            font-size: 1.2em;
+        }
+
+        .speech-panel {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+        }
+
+        .speech-text {
+            font-size: 1.3em;
+            line-height: 1.6;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .empty-state {
+            opacity: 0.5;
+            font-style: italic;
+        }
+
+        .item-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .item {
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .item:hover {
+            transform: translateX(5px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .item-name {
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .item-badge {
+            padding: 4px 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            font-size: 0.85em;
+        }
+
+        .priority-high {
+            background: rgba(239, 68, 68, 0.3);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+        }
+
+        .priority-medium {
+            background: rgba(251, 191, 36, 0.3);
+            border: 1px solid rgba(251, 191, 36, 0.5);
+        }
+
+        .priority-low {
+            background: rgba(59, 130, 246, 0.3);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+        }
+
+        .text-item {
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid #fbbf24;
+            font-weight: 500;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 25px;
+            font-size: 1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .timestamp {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        /* Scrollbar styling */
+        .item-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .item-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .item-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .item-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .status-bar {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>👁️ Percepta</h1>
+            <p class="subtitle">AI-Powered Vision Assistant for the Visually Impaired</p>
+        </header>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span><strong>System Active</strong></span>
+            </div>
+            <div class="timestamp" id="lastUpdate">Waiting for data...</div>
+            <div class="controls">
+                <button class="btn-secondary" onclick="refreshData()">🔄 Refresh</button>
+            </div>
+        </div>
+
+        <div class="panel speech-panel">
+            <h2><span class="icon">🔊</span> Current Narration</h2>
+            <div class="speech-text" id="speechText">
+                <span class="empty-state">No active narration</span>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="panel">
+                <h2><span class="icon">👀</span> Detected Objects</h2>
+                <div class="item-list" id="objectsList">
+                    <div class="empty-state">No objects detected</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2><span class="icon">📝</span> Detected Text</h2>
+                <div class="item-list" id="textList">
+                    <div class="empty-state">No text detected</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+        let updateInterval;
+
+        // Fetch data from backend
+        async function fetchData() {
+            try {
+                const response = await fetch(`${API_URL}/data`);
+                const data = await response.json();
+                updateDashboard(data);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        // Update dashboard with new data
+        function updateDashboard(data) {
+            // Update timestamp
+            if (data.timestamp) {
+                const time = new Date(data.timestamp).toLocaleTimeString();
+                document.getElementById('lastUpdate').textContent = `Last update: ${time}`;
+            }
+
+            // Update speech
+            const speechText = document.getElementById('speechText');
+            if (data.speech) {
+                speechText.innerHTML = data.speech;
+                speechText.classList.remove('empty-state');
+            } else {
+                speechText.innerHTML = '<span class="empty-state">No active narration</span>';
+            }
+
+            // Update objects list
+            const objectsList = document.getElementById('objectsList');
+            if (data.objects && data.objects.length > 0) {
+                objectsList.innerHTML = data.objects.map(obj => {
+                    const priorityClass = obj.priority >= 4 ? 'priority-high' : 
+                                         obj.priority >= 3 ? 'priority-medium' : 
+                                         'priority-low';
+                    return `
+                        <div class="item">
+                            <span class="item-name">${obj.class}</span>
+                            <span class="item-badge ${priorityClass}">
+                                ${(obj.confidence * 100).toFixed(0)}%
+                            </span>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                objectsList.innerHTML = '<div class="empty-state">No objects detected</div>';
+            }
+
+            // Update text list
+            const textList = document.getElementById('textList');
+            if (data.text && data.text.length > 0) {
+                textList.innerHTML = data.text.map(text => 
+                    `<div class="text-item">${text}</div>`
+                ).join('');
+            } else {
+                textList.innerHTML = '<div class="empty-state">No text detected</div>';
+            }
+        }
+
+        // Refresh data manually
+        function refreshData() {
+            fetchData();
+        }
+
+        // Start auto-refresh
+        function startAutoRefresh() {
+            fetchData(); // Initial fetch
+            updateInterval = setInterval(fetchData, 1000); // Update every second
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            console.log('Percepta Dashboard initialized');
+            startAutoRefresh();
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        });
+    </script>
+</body>
+</html>
