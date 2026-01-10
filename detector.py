@@ -10,32 +10,48 @@ class ObjectDetector:
     
     # Enhanced priority system with danger levels
     # Priority levels: 1=Low, 2=Medium, 3=High, 4=Very High, 5=Critical
+    # NOTE: YOLO v8 does NOT have 'stairs' class - removed from priorities
+    
+    # Emergency objects - immediate alert
+    EMERGENCY_OBJECTS = {
+        'fire hydrant',
+        'stop sign',
+        'traffic light',
+    }
+    
     PRIORITY_CLASSES = {
         # Critical hazards (immediate danger)
-        'stairs': 5,           # Fall hazard - MOST CRITICAL
-        'escalator': 5,        # Moving stairs
+        'car': 5,
+        'truck': 5,
+        'bus': 5,
+        'train': 5,
         
         # Very high priority (moving/dangerous objects)
-        'car': 4,
-        'truck': 4,
-        'bus': 4,
-        'train': 4,
         'motorcycle': 4,
         'bicycle': 4,
+        'stop sign': 5,          # Emergency
+        'traffic light': 5,      # Emergency
+        'fire hydrant': 5,       # Emergency
         
         # High priority (obstacles/navigation)
-        'person': 3,
-        'door': 3,
-        'stop sign': 4,
-        'traffic light': 4,
+        'person': 4,
+        'dog': 4,
+        'cat': 3,
         
-        # Medium priority (potential obstacles)
-        'chair': 2,
-        'couch': 2,
-        'bench': 2,
-        'table': 2,
+        # Medium-high (furniture/obstacles)
+        'chair': 3,
+        'couch': 3,
+        'bench': 3,
+        'table': 3,
+        'bed': 3,
         'potted plant': 2,
-        'fire hydrant': 3,
+        'tv': 2,
+        
+        # Medium priority
+        'door': 2,
+        'refrigerator': 2,
+        'oven': 2,
+        'sink': 2,
         
         # Low priority (informational)
         'handbag': 1,
@@ -43,38 +59,74 @@ class ObjectDetector:
         'umbrella': 1,
         'bottle': 1,
         'cup': 1,
+        'fork': 1,
+        'knife': 2,
+        'spoon': 1,
+        'bowl': 1,
+        'banana': 1,
+        'apple': 1,
+        'sandwich': 1,
+        'orange': 1,
+        'broccoli': 1,
+        'carrot': 1,
+        'hot dog': 1,
+        'pizza': 1,
+        'donut': 1,
+        'cake': 1,
         'cell phone': 1,
         'laptop': 1,
+        'mouse': 1,
+        'remote': 1,
+        'keyboard': 1,
         'book': 1,
-        
-        # Animals
-        'dog': 3,
-        'cat': 2,
-        
-        # Structural (static obstacles)
-        'wall': 1,             # Wall is low priority unless very close
-        'fence': 2,
+        'clock': 1,
+        'vase': 1,
+        'scissors': 2,
+        'teddy bear': 1,
+        'hair drier': 1,
+        'toothbrush': 1,
     }
     
     # Danger coefficient - how dangerous is this object type?
     DANGER_LEVEL = {
-        'stairs': 10,          # Extremely dangerous
-        'escalator': 10,
-        'car': 8,
-        'truck': 8,
-        'bus': 8,
-        'train': 9,
-        'motorcycle': 7,
-        'bicycle': 6,
-        'person': 5,
-        'door': 4,
-        'fire hydrant': 6,
-        'stop sign': 7,
-        'traffic light': 7,
-        'dog': 6,
-        'chair': 3,
-        'table': 4,
-        'wall': 2,
+        # Vehicles (highest danger)
+        'car': 10,
+        'truck': 10,
+        'bus': 10,
+        'train': 10,
+        'motorcycle': 9,
+        'bicycle': 7,
+        
+        # Emergency/Safety
+        'fire hydrant': 10,      # Emergency equipment
+        'stop sign': 10,         # Safety critical
+        'traffic light': 10,     # Safety critical
+        
+        # People and animals
+        'person': 8,
+        'dog': 7,
+        'cat': 5,
+        'horse': 8,
+        'sheep': 5,
+        'cow': 7,
+        'elephant': 9,
+        'bear': 9,
+        'zebra': 6,
+        'giraffe': 6,
+        
+        # Furniture (trip hazards)
+        'chair': 5,
+        'couch': 5,
+        'table': 6,
+        'bed': 4,
+        'bench': 5,
+        
+        # Other obstacles
+        'potted plant': 4,
+        'tv': 3,
+        'laptop': 2,
+        'door': 3,
+        
         'default': 3
     }
     
@@ -205,11 +257,15 @@ class ObjectDetector:
                     # Assign priority
                     priority = self.PRIORITY_CLASSES.get(class_name, 1)
                     
+                    # Check if emergency object
+                    is_emergency = class_name in self.EMERGENCY_OBJECTS
+                    
                     detection = {
                         'class': class_name,
                         'confidence': round(confidence, 2),
                         'bbox': bbox,
-                        'priority': priority
+                        'priority': priority,
+                        'is_emergency': is_emergency
                     }
                     
                     # Calculate urgency
