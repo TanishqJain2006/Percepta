@@ -6,7 +6,7 @@ from camera import CameraHandler
 from detector import ObjectDetector
 from ocr import TextRecognizer
 from formatter import ContextFormatter
-from tts_multilang import MultiLanguageTTS as TextToSpeech
+from tts import TextToSpeech
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,14 +26,13 @@ class PerceptaVisionPipeline:
             backend_url: URL of Flask backend API
         """
         self.backend_url = backend_url
-        self.current_language = 'en'  # Default language
         
         # Initialize modules
         self.camera = CameraHandler()
         self.detector = ObjectDetector(confidence_threshold=0.5)
         self.ocr = TextRecognizer()
         self.formatter = ContextFormatter(cooldown_seconds=5)
-        self.tts = TextToSpeech(rate=160, use_gtts_for_hindi=True)
+        self.tts = TextToSpeech(rate=160)
         
         # Processing control
         self.is_running = False
@@ -72,22 +71,6 @@ class PerceptaVisionPipeline:
         
         return success
     
-    def get_current_language(self):
-        """Fetch current language from backend"""
-        try:
-            response = requests.get(
-                f"{self.backend_url}/get_language",
-                timeout=1
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                return data.get('language', 'en')
-        except:
-            pass
-        
-        return self.current_language
-    
     def process_frame(self, frame):
         """
         Process a single frame through the pipeline
@@ -99,13 +82,6 @@ class PerceptaVisionPipeline:
             dict: Processing results
         """
         self.frame_count += 1
-        
-        # Check for language changes every 30 frames
-        if self.frame_count % 30 == 0:
-            new_language = self.get_current_language()
-            if new_language != self.current_language:
-                logger.info(f"Language changed from {self.current_language} to {new_language}")
-                self.current_language = new_language
         
         objects = []
         texts = []
@@ -123,26 +99,15 @@ class PerceptaVisionPipeline:
             if texts:
                 logger.info(f"Detected {len(texts)} text(s): {texts}")
         
-        # Format context and generate narration
-        result = self.formatter.format_context(objects, texts, language=self.current_language)
+        # Format context and generate narration (English only)
+        result = self.formatter.format_context(objects, texts, language='en')
         
         # Speak if there's something to say
         if result['speech']:
-            logger.info(f"🔊 SPEAKING ({self.current_language}): {result['speech']}")
-            
-            # Pass language to TTS
-            if hasattr(self.tts, 'speak') and 'language' in self.tts.speak.__code__.co_varnames:
-                # New multi-language TTS
-                speech_success = self.tts.speak(result['speech'], language=self.current_language, blocking=False)
-            else:
-                # Old TTS (no language support)
-                speech_success = self.tts.speak(result['speech'], blocking=False)
-                
+            logger.info(f"🔊 SPEAKING: {result['speech']}")
+            speech_success = self.tts.speak(result['speech'], blocking=False)
             if not speech_success:
                 logger.warning("TTS failed to speak")
-        
-        # Add language to result
-        result['language'] = self.current_language
         
         return result
     
