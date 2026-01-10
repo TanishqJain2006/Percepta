@@ -12,7 +12,8 @@ try:
     from gtts import gTTS
     import os
     import tempfile
-    from playsound import playsound
+    import pygame
+    pygame.mixer.init()
     GTTS_AVAILABLE = True
 except ImportError:
     GTTS_AVAILABLE = False
@@ -112,11 +113,17 @@ class MultiLanguageTTS:
             tts = gTTS(text=text, lang=language, slow=False)
             tts.save(temp_file.name)
             
-            # Play audio
-            playsound(temp_file.name)
+            # Play audio using pygame
+            pygame.mixer.music.load(temp_file.name)
+            pygame.mixer.music.play()
+            
+            # Wait for playback to finish
+            while pygame.mixer.music.get_busy():
+                time.sleep(0.1)
             
             # Cleanup
             try:
+                pygame.mixer.music.unload()
                 os.unlink(temp_file.name)
                 self._temp_files.remove(temp_file.name)
             except:
@@ -173,12 +180,16 @@ class MultiLanguageTTS:
                     # Choose TTS backend
                     if language == 'hi' and self.use_gtts_for_hindi:
                         # Use Google TTS for Hindi
+                        logger.info("✓ Using Google TTS for Hindi")
                         success = self._speak_with_gtts(text, language='hi')
                         if not success:
                             logger.warning("Google TTS failed, falling back to pyttsx3")
                             self._speak_with_pyttsx3(text)
                     else:
                         # Use pyttsx3 for English or if gTTS not available
+                        if language == 'hi':
+                            logger.warning("⚠️ Google TTS not enabled for Hindi, using pyttsx3 (may not sound good)")
+                        logger.info("Using pyttsx3")
                         self._speak_with_pyttsx3(text)
                     
                 except Exception as e:
