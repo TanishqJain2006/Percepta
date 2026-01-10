@@ -8,8 +8,14 @@ logger = logging.getLogger(__name__)
 class ContextFormatter:
     """
     The brain of Percepta - generates contextual, human-readable narration
-    from raw detection data with multi-language support
+    from raw detection data with emergency detection support
     """
+    
+    # Emergency keywords that trigger immediate alerts
+    EMERGENCY_KEYWORDS = {
+        'fire', 'smoke', 'emergency', 'exit', 'danger', 
+        'warning', 'caution', 'stop', 'hazard', 'wet floor'
+    }
     
     # Translation dictionaries
     TRANSLATIONS = {
@@ -52,7 +58,6 @@ class ContextFormatter:
             'ahead': 'सामने',
             'sign_reads': 'साइन पर लिखा है',
             'text_reads': 'टेक्स्ट पर लिखा है',
-            'stairs': 'सीढ़ियाँ',
             'door': 'दरवाज़ा',
             'person': 'व्यक्ति',
             'car': 'गाड़ी',
@@ -63,6 +68,7 @@ class ContextFormatter:
             'chair': 'कुर्सी',
             'couch': 'सोफा',
             'bench': 'बेंच',
+            'table': 'मेज',
             'stop sign': 'स्टॉप साइन',
             'traffic light': 'ट्रैफ़िक लाइट',
             'fire hydrant': 'फायर हाइड्रेंट',
@@ -76,6 +82,38 @@ class ContextFormatter:
             'laptop': 'लैपटॉप',
             'dog': 'कुत्ता',
             'cat': 'बिल्ली',
+        },
+        'hi-roman': {  # Transliteration for offline TTS
+            'caution': 'Saavdhaan',
+            'warning': 'Chetaavani',
+            'detected': 'ka pata chala',
+            'ahead': 'saamne',
+            'sign_reads': 'Sign par likha hai',
+            'text_reads': 'Text par likha hai',
+            'stairs': 'Seedhiyaan',
+            'door': 'Darvaaza',
+            'person': 'Vyakti',
+            'car': 'Gaadi',
+            'truck': 'Truck',
+            'bus': 'Bus',
+            'bicycle': 'Cycle',
+            'motorcycle': 'Motorcycle',
+            'chair': 'Kursi',
+            'couch': 'Sofa',
+            'bench': 'Bench',
+            'stop sign': 'Stop sign',
+            'traffic light': 'Traffic light',
+            'fire hydrant': 'Fire hydrant',
+            'handbag': 'Handbag',
+            'backpack': 'Backpack',
+            'umbrella': 'Chaata',
+            'bottle': 'Bottle',
+            'cup': 'Cup',
+            'knife': 'Chaku',
+            'cell phone': 'Mobile phone',
+            'laptop': 'Laptop',
+            'dog': 'Kutta',
+            'cat': 'Billi',
         }
     }
     
@@ -88,6 +126,8 @@ class ContextFormatter:
         """
         self.cooldown_seconds = cooldown_seconds
         self.last_announcements = {}  # Track what was last said and when
+        self.emergency_mode = False   # Emergency detection flag
+        self.last_emergency_time = None
     
     def translate(self, key, language='en'):
         """Get translation for a key"""
@@ -101,15 +141,27 @@ class ContextFormatter:
         Args:
             objects: List of object detections from detector
             texts: List of text strings from OCR
-            language: Language code ('en' or 'hi')
+            language: Language code (only 'en' supported now)
             
         Returns:
             dict: {
                 'objects': list of object summaries,
                 'text': list of detected text,
-                'speech': string to be spoken
+                'speech': string to be spoken,
+                'is_emergency': boolean - if emergency detected
             }
         """
+        # Check for emergency objects
+        has_emergency_object = any(obj.get('is_emergency', False) for obj in objects)
+        
+        # Check for emergency text
+        has_emergency_text = any(
+            any(keyword in text.lower() for keyword in self.EMERGENCY_KEYWORDS)
+            for text in texts
+        )
+        
+        is_emergency = has_emergency_object or has_emergency_text
+        
         # Filter objects by priority
         priority_objects = self._get_priority_objects(objects)
         
@@ -117,16 +169,23 @@ class ContextFormatter:
         important_texts = self._filter_important_texts(texts)
         
         # Generate speech narration
-        speech = self._generate_speech(priority_objects, important_texts, language)
+        speech = self._generate_speech(priority_objects, important_texts, language, is_emergency)
         
-        # Check cooldown - avoid repeating same info too quickly
-        if not self._check_cooldown(speech):
-            speech = None
+        # Emergency announcements bypass cooldown
+        if is_emergency:
+            logger.warning(f"🚨 EMERGENCY DETECTED!")
+            self.emergency_mode = True
+            self.last_emergency_time = datetime.now()
+        else:
+            # Check cooldown for normal announcements
+            if not self._check_cooldown(speech):
+                speech = None
         
         return {
             'objects': [self._format_object(obj) for obj in priority_objects[:5]],
             'text': important_texts,
-            'speech': speech
+            'speech': speech,
+            'is_emergency': is_emergency
         }
     
     def _get_priority_objects(self, objects):
@@ -181,10 +240,16 @@ class ContextFormatter:
             'priority': obj['priority']
         }
     
-    def _generate_speech(self, objects, texts, language='en'):
+    def _generate_speech(self, objects, texts, language='en', is_emergency=False):
         """
         Generate natural speech narration with INTELLIGENT prioritization
         Focuses on the MOST CRITICAL hazard first
+        
+        Args:
+            objects: Priority objects
+            texts: Important texts
+            language: Language ('en' only)
+            is_emergency: Whether this is an emergency alert
         
         This is the core "speak what matters most" logic
         """
@@ -192,6 +257,10 @@ class ContextFormatter:
             return None
         
         speech_parts = []
+        
+        # EMERGENCY MODE - urgent prefix
+        if is_emergency:
+            speech_parts.append("EMERGENCY ALERT!")
         
         # Handle objects with INTELLIGENT prioritization
         if objects:
@@ -206,18 +275,32 @@ class ContextFormatter:
             
             # Generate warning based on urgency and distance
             class_name = most_urgent['class']
+            is_emergency_obj = most_urgent.get('is_emergency', False)
             
             if language == 'hi':
-                # Hindi warnings
-                if is_critical or is_very_close:
+                # Hindi warnings (removed - English only now)
+                pass
+            else:
+                # English warnings
+                if is_emergency_obj:
+                    # EMERGENCY OBJECT - maximum urgency
+                    if class_name == 'fire hydrant':
+                        speech_parts.append("FIRE HYDRANT DETECTED! Emergency equipment located")
+                    elif class_name == 'stop sign':
+                        speech_parts.append("STOP SIGN! Do not proceed")
+                    elif class_name == 'traffic light':
+                        speech_parts.append("TRAFFIC LIGHT AHEAD! Exercise caution")
+                    else:
+                        speech_parts.append(f"EMERGENCY! {class_name.upper()} detected")
+                elif is_critical or is_very_close:
                     # CRITICAL WARNING - very urgent tone
-                    if class_name == 'stairs':
-                        speech_parts.append(f"{self.translate('caution', language)}! {self.translate('caution', language)}! {self.translate('stairs', language)} {self.translate('detected', language)}!")
-                    elif class_name in ['car', 'truck', 'bus', 'train']:
+                    if class_name in ['car', 'truck', 'bus', 'train']:
                         vehicle = self.translate(class_name, language)
                         speech_parts.append(f"{self.translate('warning', language)}! {vehicle} {self.translate('detected', language)}!")
                     elif class_name == 'person':
-                        speech_parts.append(f"{self.translate('person', language)} {self.translate('ahead', language)}")
+                        speech_parts.append(f"{self.translate('caution', language)}! {self.translate('person', language)} {self.translate('ahead', language)}")
+                    elif class_name == 'dog':
+                        speech_parts.append(f"{self.translate('caution', language)}! {self.translate('dog', language)} {self.translate('ahead', language)}")
                     elif class_name == 'door':
                         speech_parts.append(f"{self.translate('door', language)} {self.translate('ahead', language)}")
                     else:
@@ -230,16 +313,16 @@ class ContextFormatter:
                         speech_parts.append(f"{translated} {self.translate('detected', language)}")
                     else:
                         speech_parts.append(f"{translated} {self.translate('ahead', language)}")
-            else:
+        else:
                 # English warnings
                 if is_critical or is_very_close:
                     # CRITICAL WARNING - very urgent tone
-                    if class_name == 'stairs':
-                        speech_parts.append("CAUTION! STAIRS AHEAD!")
-                    elif class_name in ['car', 'truck', 'bus', 'train']:
+                    if class_name in ['car', 'truck', 'bus', 'train']:
                         speech_parts.append(f"WARNING! {class_name.upper()} DETECTED!")
                     elif class_name == 'person':
-                        speech_parts.append("Person directly ahead")
+                        speech_parts.append("CAUTION! Person directly ahead")
+                    elif class_name == 'dog':
+                        speech_parts.append("CAUTION! Dog ahead")
                     elif class_name == 'door':
                         speech_parts.append("Door immediately ahead")
                     else:
@@ -248,16 +331,18 @@ class ContextFormatter:
                     # Normal priority announcement
                     if class_name == 'person':
                         speech_parts.append("Person ahead")
+                    elif class_name == 'dog':
+                        speech_parts.append("Dog detected")
                     elif class_name == 'door':
                         speech_parts.append("Door ahead")
-                    elif class_name in ['chair', 'table', 'bench']:
+                    elif class_name in ['chair', 'table', 'bench', 'couch']:
                         speech_parts.append(f"{class_name.capitalize()} detected")
                     else:
                         speech_parts.append(f"{class_name.capitalize()} ahead")
             
             # Only add other objects if they're also urgent
             # This prevents information overload
-            if len(objects) > 1:
+        if len(objects) > 1:
                 other_urgent = [obj for obj in objects[1:3] if obj.get('urgency', 0) >= urgency_score * 0.7]
                 
                 if other_urgent:
@@ -275,10 +360,23 @@ class ContextFormatter:
             
             is_important = any(keyword in text.lower() for text in texts for keyword in important_signs)
             
+            # Check if emergency text
+            has_emergency_keyword = any(
+                any(keyword in text.lower() for keyword in self.EMERGENCY_KEYWORDS)
+                for text in texts
+            )
+            
             if language == 'hi':
-                text_intro = self.translate('sign_reads' if is_important else 'text_reads', language)
+                # Hindi (removed - English only)
+                pass
             else:
-                text_intro = "Sign reads" if is_important else "Text reads"
+                # English
+                if has_emergency_keyword:
+                    text_intro = "EMERGENCY SIGN READS"
+                elif is_important:
+                    text_intro = "IMPORTANT! Sign reads"
+                else:
+                    text_intro = "Text reads"
             
             # Only announce the first 2 texts to avoid overload
             texts_to_announce = texts[:2]
