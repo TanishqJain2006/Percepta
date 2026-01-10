@@ -17,11 +17,11 @@ latest_data = {
     'objects': [],
     'text': [],
     'speech': None,
-    'timestamp': None
+    'timestamp': None,
+    'is_emergency': False
 }
 
-# Store current language setting
-current_language = 'en'  # Default: English
+# Language removed - English only
 
 # Import vision modules (for mobile endpoint)
 try:
@@ -341,7 +341,7 @@ def mobile():
             try {
                 const formData = new FormData();
                 formData.append('image', blob, 'frame.jpg');
-                formData.append('language', 'en');
+                formData.append('language', 'en');  // English only
                 
                 const res = await fetch(window.location.origin + '/analyze', {
                     method: 'POST',
@@ -351,12 +351,29 @@ def mobile():
                 if (res.ok) {
                     const data = await res.json();
                     
-                    // Update narration
-                    if (data.speech) {
-                        document.getElementById('speech').innerHTML = `<strong>${data.speech}</strong>`;
-                        speak(data.speech);
+                    const speechPanel = document.getElementById('speechPanel');
+                    const speechDiv = document.getElementById('speech');
+                    
+                    // Handle emergency mode
+                    if (data.is_emergency) {
+                        speechPanel.classList.add('emergency');
+                        if (data.speech) {
+                            speechDiv.innerHTML = `<strong style="color: #fee; font-size: 1.3em;">🚨 ${data.speech}</strong>`;
+                            speak(data.speech);
+                            
+                            // Vibrate on emergency (if supported)
+                            if ('vibrate' in navigator) {
+                                navigator.vibrate([200, 100, 200]);
+                            }
+                        }
                     } else {
-                        document.getElementById('speech').textContent = 'No significant objects detected';
+                        speechPanel.classList.remove('emergency');
+                        if (data.speech) {
+                            speechDiv.innerHTML = `<strong>${data.speech}</strong>`;
+                            speak(data.speech);
+                        } else {
+                            speechDiv.textContent = 'No significant objects detected';
+                        }
                     }
                     
                     // Update objects
@@ -606,6 +623,22 @@ def analyze_image():
         .speech-panel {
             grid-column: 1 / -1;
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+            transition: all 0.3s;
+        }
+        
+        .speech-panel.emergency {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.4), rgba(220, 38, 38, 0.3));
+            border: 3px solid #ef4444;
+            animation: emergency-pulse 1s infinite;
+        }
+        
+        @keyframes emergency-pulse {
+            0%, 100% { 
+                box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+            }
+            50% { 
+                box-shadow: 0 0 40px rgba(239, 68, 68, 0.8);
+            }
         }
 
         .speech-text {
@@ -775,14 +808,6 @@ def analyze_image():
                 <span><strong>System Active</strong></span>
             </div>
             
-            <div class="language-selector">
-                <label for="languageSelect">🌐 Language:</label>
-                <select id="languageSelect" onchange="changeLanguage()">
-                    <option value="en">English</option>
-                    <option value="hi">हिंदी (Hindi)</option>
-                </select>
-            </div>
-            
             <div class="timestamp" id="lastUpdate">Waiting for data...</div>
             
             <div class="controls">
@@ -836,11 +861,23 @@ def analyze_image():
             }
 
             const speechText = document.getElementById('speechText');
-            if (data.speech) {
-                speechText.innerHTML = data.speech;
-                speechText.classList.remove('empty-state');
+            const speechPanel = speechText.closest('.speech-panel');
+            
+            // Handle emergency mode
+            if (data.is_emergency) {
+                speechPanel.classList.add('emergency');
+                if (data.speech) {
+                    speechText.innerHTML = `<strong style="color: #fee; font-size: 1.4em;">🚨 ${data.speech}</strong>`;
+                    speechText.classList.remove('empty-state');
+                }
             } else {
-                speechText.innerHTML = '<span class="empty-state">No active narration</span>';
+                speechPanel.classList.remove('emergency');
+                if (data.speech) {
+                    speechText.innerHTML = data.speech;
+                    speechText.classList.remove('empty-state');
+                } else {
+                    speechText.innerHTML = '<span class="empty-state">No active narration</span>';
+                }
             }
 
             const objectsList = document.getElementById('objectsList');
@@ -945,7 +982,17 @@ def analyze_image():
 
 @app.route('/')
 def index():
-    """Serve the web dashboard"""
+    """Serve the web dashboard or redirect to mobile on mobile devices"""
+    # Detect mobile device from user agent
+    user_agent = request.headers.get('User-Agent', '').lower()
+    is_mobile = any(x in user_agent for x in ['mobile', 'android', 'iphone', 'ipad'])
+    
+    if is_mobile:
+        # Redirect mobile devices to mobile app
+        from flask import redirect
+        return redirect('/mobile')
+    
+    # Serve desktop dashboard
     return '''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1222,7 +1269,17 @@ def index():
                 <div class="status-dot"></div>
                 <span><strong>System Active</strong></span>
             </div>
+            
+            <div class="language-selector">
+                <label for="languageSelect">🌐 Language:</label>
+                <select id="languageSelect" onchange="changeLanguage()">
+                    <option value="en">English</option>
+                    <option value="hi">हिंदी (Hindi)</option>
+                </select>
+            </div>
+            
             <div class="timestamp" id="lastUpdate">Waiting for data...</div>
+            
             <div class="controls">
                 <button class="btn-secondary" onclick="refreshData()">🔄 Refresh</button>
             </div>
@@ -1333,43 +1390,6 @@ def index():
 </html>'''
 
 
-@app.route('/set_language', methods=['POST'])
-def set_language():
-    """
-    Set the current language for narration
-    
-    Expected payload:
-    {
-        'language': 'en' or 'hi'
-    }
-    """
-    try:
-        data = request.get_json()
-        
-        if not data or 'language' not in data:
-            return jsonify({'error': 'No language provided'}), 400
-        
-        global current_language
-        current_language = data['language']
-        
-        logger.info(f"Language changed to: {current_language}")
-        
-        return jsonify({
-            'status': 'success',
-            'language': current_language
-        }), 200
-        
-    except Exception as e:
-        logger.error(f"Language change error: {e}")
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/get_language', methods=['GET'])
-def get_language():
-    """Get current language setting"""
-    return jsonify({'language': current_language}), 200
-
-
 @app.route('/update', methods=['POST'])
 def update_data():
     """
@@ -1396,13 +1416,13 @@ def update_data():
             'text': data.get('text', []),
             'speech': data.get('speech'),
             'timestamp': datetime.now().isoformat(),
-            'language': data.get('language', current_language)
+            'is_emergency': data.get('is_emergency', False)
         }
         
         logger.debug(f"Data updated: {len(latest_data['objects'])} objects, "
                     f"{len(latest_data['text'])} texts")
         
-        return jsonify({'status': 'success', 'current_language': current_language}), 200
+        return jsonify({'status': 'success'}), 200
         
     except Exception as e:
         logger.error(f"Update error: {e}")
